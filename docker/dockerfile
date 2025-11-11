@@ -22,7 +22,7 @@ FROM nginx:alpine AS production
 # set cd of prod
 WORKDIR /app
 
-# copy build from dev stage into the nginx serve path 
+# copy build from build stage into the nginx serve path 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
