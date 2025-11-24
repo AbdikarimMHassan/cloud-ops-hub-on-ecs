@@ -11,6 +11,6 @@ variable "alb_zone_id" {
 
 variable "alb_dns_name" {
     type = string
-    description = "alb dns name required to map the domain to the alb"
+    description = "alb dns name required to map domain to the alb"
   
 }
