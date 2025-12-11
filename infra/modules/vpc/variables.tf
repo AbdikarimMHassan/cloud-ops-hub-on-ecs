@@ -1,8 +1,10 @@
 
+# variable for the vpc name
 variable "vpc_name" {
   type = string
   
 }
+
 
 # variable for the cidr range of the vpc
 variable "vpc_cidr" {
@@ -30,3 +32,4 @@ variable "private_app_subnets" {
     }))
   
 }
+
