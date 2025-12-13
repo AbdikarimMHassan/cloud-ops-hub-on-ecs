@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-        - "app/**"
-        - "docker/**"
+      - "app/**"
+      - "docker/**"
   workflow_dispatch:
 
 jobs:
@@ -40,51 +40,51 @@ jobs:
         run: |
           IMAGE_TAG=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-
-      - name: build docker image
+      
+      - name: Build Docker image
         run: |
           docker build \
-          -f docker/dockerfile \
-          -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
-          .
-      - name: Trivy image vulenerability scan
+            -f docker/Dockerfile \
+            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} \
+            .
+      
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}   
-          format: sariff
-          output: scan-results.sariff
-          severity: CRITICAL,HIGHT
+          image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
           exit-code: 1
       
-      - name: Upload Trivy scan results to GitHub Security
+      - name: Upload Trivy results to GitHub Security
         if: always()
-        uses: github/codeql-action/upload@v3
+        uses: github/codeql-action/upload-sarif@v3
         with:
-          sariff_file: scan-results.sariff
-       
-      - name: Test container at runtime
+          sarif_file: trivy-results.sarif
+      
+      - name: Test Docker container
         run: |
           docker run -d \
-           p 8080:80 \
-           --name test-container \
-           ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            -p 8080:80 \
+            --name test-container \
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
           sleep 5
           curl --fail http://localhost:8080 || exit 1
           docker stop test-container
           docker rm test-container
-
-      - name: Push docker image to ECR
-        run: |
-          docker push \
-          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
       
-      - name: Update SSM parameter image Tag
+      - name: Push Docker image to ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+      
+      - name: Update SSM parameter with new image tag
         run: |
           aws ssm put-parameter \
-          -- name {{ env.SSM_PARAMETER_NAME }} \
-          --value ${{ env.IMAGE_TAG }} \
-          -- overwrite \
-          --region ${{ env.AWS_REGION }}
+            --name ${{ env.SSM_PARAMETER_NAME }} \
+            --value ${{ env.IMAGE_TAG }} \
+            --overwrite \
+            --region ${{ env.AWS_REGION }}
 
           
     
