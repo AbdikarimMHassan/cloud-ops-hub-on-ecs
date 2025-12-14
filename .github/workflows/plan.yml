@@ -36,12 +36,12 @@ jobs:
       - name: Terraform init
         run: terraform init
 
-      - name: terraform fmt check
+      - name: terraform format check
         run: terraform fmt -check -recursive
 
       - name: Terraform tflint
         uses: terraform-linters/setup-tflint@v4
-      - run: tflint --init && tflint --format comapct
+      - run: tflint --init && tflint --format compact
 
       - name: terraform validate
         run: terraform validate
