@@ -85,6 +85,7 @@ jobs:
         with:
           directory: ./infra
           framework: terraform
+          check: CKV_AWS_1, CKV_AWS_2, CKV_AWS_3
           output_format: sarif
           output_file_path: checkov-terra-results.sarif
           soft-fail: false
