@@ -1,0 +1,145 @@
+name: Terraform Plan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/plan.yml"
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ./infra
+
+jobs:
+  Terraform-Validation:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: eu-north-1
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform tflint
+        uses: terraform-linters/setup-tflint@v4
+      - run: tflint --init && tflint --format comapct
+
+      - name: terraform validate
+        run: terraform validate
+
+  Security-scan:
+    needs: Terraform-Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        scanner: [trivy, checkov]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: run trivy vulnerability scanner
+        if: matrix.scanner == 'trivy'
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: ./infra
+          format: sarif
+          output: trivy-terra-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: upload trivy scan results
+        if: matrix.scanner == 'trivy' && always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-terra-results.sarif
+
+      - name: run checkov scanner
+        if: matrix.scanner == 'checkov'
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ./infra
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-terra-results.sarif
+          soft-fail: false
+
+      - name: upload checkov scan results
+        if: matrix.scanner == 'checkov' && always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-terra-results.sarif
+
+  terraform-plan:
+    needs: Security-scan
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: eu-north-1
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform plan
+        run: |
+          terraform plan -no-color -out=plan.out
+          terraform show -no-color plan.out > plan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: |
+            infra/plan.out
+            infra/plan.txt
+
+      - name: Show plan in job summary
+        run: |
+          {
+            echo '## Terraform Plan'
+            echo ''
+            echo '```hcl'
+            head -n 100 plan.txt
+            echo '```'
+            echo ''
+            echo '_Full plan can be found in artifacts_'
+          } >> "$GITHUB_STEP_SUMMARY"
+
