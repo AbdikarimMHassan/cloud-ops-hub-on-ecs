@@ -19,7 +19,6 @@ jobs:
       id-token: write
       contents: read
       security-events: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,6 +32,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: eu-north-1
 
+      - name: Recreate terraform.tfvars from secret
+        run: |
+          cat <<'EOF' > terraform.tfvars
+          ${{ secrets.TF_VARS }}
+          EOF
+
       - name: Terraform init
         run: terraform init
 
@@ -41,6 +46,7 @@ jobs:
 
       - name: Terraform tflint
         uses: terraform-linters/setup-tflint@v4
+
       - run: tflint --init && tflint --format compact
 
       - name: terraform validate
@@ -52,12 +58,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
-
     strategy:
       fail-fast: false
       matrix:
         scanner: [trivy, checkov]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,12 +74,12 @@ jobs:
           scan-ref: ./infra
           format: sarif
           output: trivy-terra-results.sarif
-          severity: CRITICAL, HIGH
+          severity: CRITICAL,HIGH
           exit-code: 0
 
       - name: upload trivy scan results
         if: matrix.scanner == 'trivy' && always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-terra-results.sarif
 
@@ -92,7 +96,7 @@ jobs:
 
       - name: upload checkov scan results
         if: matrix.scanner == 'checkov' && always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: checkov-terra-results.sarif
 
@@ -102,7 +106,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -115,6 +118,12 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
           aws-region: eu-north-1
+
+      - name: Recreate terraform.tfvars from secret
+        run: |
+          cat <<'EOF' > terraform.tfvars
+          ${{ secrets.TF_VARS_FILE }}
+          EOF
 
       - name: Terraform init
         run: terraform init
@@ -131,16 +140,3 @@ jobs:
           path: |
             infra/plan.out
             infra/plan.txt
-
-      - name: Show plan in job summary
-        run: |
-          {
-            echo '## Terraform Plan'
-            echo ''
-            echo '```hcl'
-            head -n 100 plan.txt
-            echo '```'
-            echo ''
-            echo '_Full plan can be found in artifacts_'
-          } >> "$GITHUB_STEP_SUMMARY"
-
