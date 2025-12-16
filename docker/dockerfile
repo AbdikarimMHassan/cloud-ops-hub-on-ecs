@@ -1,30 +1,35 @@
 FROM node:22-slim AS build
 
-#set working directory
 WORKDIR /app
 
-# copy dependencies
 COPY app/package.json app/package-lock.json ./
 
-RUN rm -f package-lock.json && npm install
-
-# install dependencies first to leverage docker's layer caching
 RUN npm install
 
 COPY app/vite.config.js ./
 COPY app/src ./src
 COPY app/public ./public
 COPY app/index.html ./
+
 RUN npm run build
 
 FROM nginx:alpine AS prod
 
 WORKDIR /app
-# copy build from build stage into the nginx serve path 
 
 COPY --from=build /app/dist /usr/share/nginx/html
+
+RUN addgroup -S nonroot && adduser -S nonroot -G nonroot
+
+RUN chown -R nonroot:nonroot /usr/share/nginx/html \
+    && chown -R nonroot:nonroot /var/cache/nginx \
+    && chown -R nonroot:nonroot /var/log/nginx \
+    && chown -R nonroot:nonroot /etc/nginx/conf.d \
+    && touch /var/run/nginx.pid \
+    && chown -R nonroot:nonroot /var/run/nginx.pid
+
+USER nonroot:nonroot
 
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
-
