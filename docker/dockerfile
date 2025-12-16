@@ -14,7 +14,6 @@ COPY app/index.html ./
 RUN npm run build
 
 FROM nginx:alpine AS prod
-
 WORKDIR /app
 
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -31,5 +30,7 @@ RUN chown -R nonroot:nonroot /usr/share/nginx/html \
 USER nonroot:nonroot
 
 EXPOSE 80
+
+HEALTHCHECK CMD curl -f http://localhost:80/ || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
