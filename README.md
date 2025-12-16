@@ -1,11 +1,8 @@
 # AWS ECS Two-Tier Architecture with CI/CD
 
-![Architecture Diagram](images/project-ecs-diagram.png)
-
-A production-ready, highly available containerized application deployment on AWS ECS using Terraform and automated CI/CD with GitHub Actions.
-
 ## Table of Contents
 
+- [Project Overview](#project-overview)
 - [Architecture Overview](#architecture-overview)
 - [Key Features](#key-features)
 - [Infrastructure Components](#infrastructure-components)
@@ -18,6 +15,12 @@ A production-ready, highly available containerized application deployment on AWS
 - [Quick Start](#quick-start)
 - [Future Enhancements](#future-enhancements)
 - [Deployment Visuals](#deployment-visuals)
+
+## Project Overview
+
+A production-grade deployment of a Cloud Ops Hub platform on AWS ECS Fargate, provisioned using Terraform and deployed through GitHub Actions. The setup includes a multi-AZ VPC, secure HTTPS routing via Application Load Balancer, scalable ECS Fargate tasks, ACM-managed certificates, CloudWatch monitoring with SNS alerts, and automated CI/CD pipelines for both application builds and infrastructure changes.
+
+![Architecture Diagram](images/project-ecs-diagram.png)
 
 ## Architecture Overview
 
@@ -162,23 +165,19 @@ The application uses a multi-stage Docker build for optimal image size and secur
 
 ### Image Size Results
 
-**Before Optimization:** ~450MB (single-stage build)
-**After Optimization:** ~45MB (multi-stage build)
-**Size Reduction:** 90% improvement
+**Before Optimization:** 651 MB (single-stage build)
+**After Optimization:** 54.5 MB (multi-stage build)
+**Size Reduction:** 91.6% improvement
 
 #### Visual Proof of Optimization
 
-**Before (Single-Stage):**
-```
-REPOSITORY           TAG      SIZE
-cloud-ops-app        latest   450MB
-```
+**Single-Stage Build:**
 
-**After (Multi-Stage):**
-```
-REPOSITORY           TAG      SIZE
-cloud-ops-app        latest   45MB
-```
+![Single Stage Docker Image](images/single-stage.png)
+
+**Multi-Stage Build:**
+
+![Multi Stage Docker Image](images/multi-stage.png)
 
 ## Monitoring
 
@@ -268,16 +267,16 @@ Push changes to `app/` or `docker/` directories to trigger the build pipeline au
 
 ## Deployment Visuals
 
+### Architecture Diagram
+![Architecture Diagram](images/project-ecs-diagram.png)
+
 ### Build & Push Pipeline
-![Build Pipeline Success](images/build-pipeline-success.png)
+![Build Pipeline Success](images/build-push-dark.png)
 
 ### Terraform Plan Pipeline
-![Terraform Plan Success](images/terraform-plan-success.png)
+![Terraform Plan Success](images/terraform-plan-dark.png)
 
-### Terraform Apply Pipeline
-![Terraform Apply Success](images/terraform-apply-success.png)
+### Terraform Deploy Pipeline
+![Terraform Deploy Success](images/Terraform-deploy-dark.png)
 
----
-
-**Note:** This is a portfolio project demonstrating AWS cloud architecture, Infrastructure as Code, and DevOps best practices.
 
