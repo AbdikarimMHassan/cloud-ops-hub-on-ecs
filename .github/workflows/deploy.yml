@@ -8,7 +8,7 @@ defaults:
     working-directory: ./infra
 
 jobs:
-  terraform-apply:
+  terraform-deploy:
     runs-on: ubuntu-latest
    
     permissions:
@@ -41,7 +41,7 @@ jobs:
           name: terraform-plan
           path: ./infra
           if_no_artifact_found: fail
-     
+
       - name: Terraform apply
         run: terraform apply -input=false plan.out
 
