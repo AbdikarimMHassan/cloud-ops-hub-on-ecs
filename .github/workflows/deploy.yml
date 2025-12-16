@@ -1,0 +1,50 @@
+name: Terraform Deploy
+
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ./infra
+
+jobs:
+  terraform-apply:
+    runs-on: ubuntu-latest
+   
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+   
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+     
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+     
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: eu-north-1
+     
+      - name: Terraform init
+        run: terraform init -input=false
+     
+      - name: Download plan artifact from latest Plan run
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: plan.yml
+          workflow_conclusion: success
+          branch: main
+          name: terraform-plan
+          path: ./infra
+          if_no_artifact_found: fail
+     
+      - name: Terraform apply
+        run: terraform apply -input=false plan.out
+
+
+      
+    
