@@ -277,6 +277,4 @@ Push changes to `app/` or `docker/` directories to trigger the build pipeline au
 ### Terraform Apply Pipeline
 ![Terraform Apply Success](docs/terraform-apply-success.png)
 
----
 
-**Note:** This is a portfolio project demonstrating AWS cloud architecture, Infrastructure as Code, and DevOps best practices.
