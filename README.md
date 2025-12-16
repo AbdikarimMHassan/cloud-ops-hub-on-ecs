@@ -3,12 +3,13 @@
 ## Table of Contents
 
 - [Project Overview](#project-overview)
+- [Project Structure](#project-structure)
 - [Architecture Overview](#architecture-overview)
 - [Key Features](#key-features)
 - [Infrastructure Components](#infrastructure-components)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Terraform Design Patterns](#terraform-design-patterns)
 - [Docker Implementation](#docker-implementation)
+- [Terraform Design Patterns](#terraform-design-patterns)
+- [CI/CD Pipeline](#cicd-pipeline)
 - [Monitoring](#monitoring)
 - [Security Highlights](#security-highlights)
 - [Prerequisites](#prerequisites)
@@ -21,6 +22,24 @@
 A production-grade deployment of a Cloud Ops Hub platform on AWS ECS Fargate, provisioned using Terraform and deployed through GitHub Actions. The setup includes a multi-AZ VPC, secure HTTPS routing via Application Load Balancer, scalable ECS Fargate tasks, ACM-managed certificates, CloudWatch monitoring with SNS alerts, and automated CI/CD pipelines for both application builds and infrastructure changes.
 
 ![Architecture Diagram](images/project-ecs-diagram.png)
+
+## Project Structure
+
+```
+.
+├── .github/workflows/       # CI/CD pipelines (build, plan, deploy)
+├── app/                     # Application source code
+├── docker/                  # dockerfile
+├── images/                  # Architecture diagrams and screenshots
+├── infra/                   # Terraform root module
+│   ├── modules/             # Reusable modules (vpc, ecs, alb, etc.)
+│   ├── backend.tf           # S3 backend configuration
+│   ├── locals.tf            # Subnet mappings and local values
+│   ├── main.tf              # Module composition
+│   ├── remote_state.tf      # S3 bucket and DynamoDB table for state management
+│   └── variables.tf         # Input variables
+└── README.md
+```
 
 ## Architecture Overview
 
@@ -84,62 +103,6 @@ Infrastructure: GitHub Actions → Terraform Plan → Manual Review → Terrafor
 
 **External Services:** Cloudflare (Domain), GitHub Actions (CI/CD), Trivy (Security Scanning), Checkov (IaC Scanning)
 
-## CI/CD Pipeline
-
-### Build Pipeline
-Triggered on push to `app/` or `docker/` directories:
-1. Checkout code and authenticate to AWS via OIDC
-2. Build Docker image tagged with Git SHA (7 characters)
-3. Run Trivy vulnerability scanner (blocks on CRITICAL/HIGH)
-4. Test container health
-5. Push image to ECR
-6. Update SSM Parameter Store with new tag
-
-**Key Innovation:** ECS task definition dynamically pulls image tag from SSM Parameter Store, enabling zero-downtime deployments without Terraform changes.
-
-### Terraform Plan Pipeline
-Triggered on push to `infra/` directory:
-1. **Static Analysis:** terraform fmt, validate, and tflint
-2. **Security Scanning:** Parallel Trivy and Checkov scans
-3. **Plan Generation:** Creates execution plan and uploads artifact
-
-### Terraform Deploy Pipeline
-Manual trigger after plan review - applies approved infrastructure changes.
-
-## Project Structure
-
-```
-.
-├── .github/workflows/       # CI/CD pipelines (build, plan, deploy)
-├── app/                     # Application source code
-├── docker/                  # dockerfile
-├── images/                  # Architecture diagrams and screenshots
-├── infra/                   # Terraform root module
-│   ├── modules/             # Reusable modules (vpc, ecs, alb, etc.)
-│   ├── backend.tf           # S3 backend configuration
-│   ├── locals.tf            # Subnet mappings and local values
-│   ├── main.tf              # Module composition
-│   ├── remote_state.tf      # S3 bucket and DynamoDB table for state management
-│   └── variables.tf         # Input variables
-└── README.md
-```
-
-## Terraform Design Patterns
-
-### DRY Principles
-Instead of repeating subnet resources, I created a map-based approach:
-- Define subnets as `map(object)` variables with CIDR and AZ attributes
-- Use `for_each` in VPC module to dynamically create subnets
-- Pass subnet configurations via `locals.tf` in root module
-
-### Modular Architecture
-Separate modules for each AWS service enable reusability and maintainability. All values passed via `terraform.tfvars` for environment-specific customization.
-
-### State Management
-- **S3 Backend:** Versioned, encrypted, with object lock
-- **DynamoDB:** State locking prevents concurrent modifications
-- Enables team collaboration and disaster recovery
-
 ## Docker Implementation
 
 ### Multi-Stage Build Strategy
@@ -147,7 +110,7 @@ Separate modules for each AWS service enable reusability and maintainability. Al
 The application uses a multi-stage Docker build for optimal image size and security:
 
 **Build Stage:** Node.js for building the application
-**Production Stage:** Nginx Alpine with non-root user for minimal runtime
+**Production Stage:** Nginx Alpine with non-root user for minimal runtime and reduced attack surface
 
 ### Best Practices Implemented
 
@@ -180,6 +143,46 @@ The application uses a multi-stage Docker build for optimal image size and secur
 **Multi-Stage Build:**
 
 ![Multi Stage Docker Image](images/multi-stage.png)
+
+## Terraform Design Patterns
+
+### DRY Principles
+Instead of repeating subnet resources, I created a map-based approach:
+- Define subnets as `map(object)` variables with CIDR and AZ attributes
+- Use `for_each` in VPC module to dynamically create subnets
+- Pass subnet configurations via `locals.tf` in root module
+
+### Modular Architecture
+Separate modules for each AWS service enable reusability and maintainability. All values passed via `terraform.tfvars` for environment-specific customization.
+
+### State Management
+- **S3 Backend:** Versioned, encrypted, with object lock (governance mode)
+- **DynamoDB:** State locking prevents concurrent modifications
+- Enables team collaboration and disaster recovery
+
+## CI/CD Pipeline
+
+The CI/CD pipeline orchestrates the entire deployment process, automating both containerization and infrastructure provisioning through GitHub Actions.
+
+### Build Pipeline
+Triggered on push to `app/` or `docker/` directories:
+1. Checkout code and authenticate to AWS via OIDC
+2. Build Docker image tagged with Git SHA (7 characters)
+3. Run Trivy vulnerability scanner (blocks on CRITICAL/HIGH)
+4. Test container health
+5. Push image to ECR
+6. Update SSM Parameter Store with new tag
+
+**Key Innovation:** ECS task definition dynamically pulls image tag from SSM Parameter Store, enabling zero-downtime deployments without Terraform changes.
+
+### Terraform Plan Pipeline
+Triggered on push to `infra/` directory:
+1. **Static Analysis:** terraform fmt, validate, and tflint
+2. **Security Scanning:** Parallel Trivy and Checkov scans using GitHub Actions matrix strategy
+3. **Plan Generation:** Creates execution plan and uploads artifact
+
+### Terraform Deploy Pipeline
+Manual trigger after plan review - applies approved infrastructure changes.
 
 ## Monitoring
 
