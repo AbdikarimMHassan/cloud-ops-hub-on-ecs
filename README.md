@@ -21,7 +21,7 @@
 
 A production-grade deployment of a Cloud Ops Hub platform on AWS ECS Fargate, provisioned using Terraform and deployed through GitHub Actions. The setup includes a multi-AZ VPC, secure HTTPS routing via Application Load Balancer, scalable ECS Fargate tasks, ACM-managed certificates, CloudWatch monitoring with SNS alerts, and automated CI/CD pipelines for both application builds and infrastructure changes.
 
-![Architecture Diagram](images/project-ecs-diagram.png)
+![Architecture Diagram](images/project-ecs-diagram1.png)
 
 ## Project Structure
 
